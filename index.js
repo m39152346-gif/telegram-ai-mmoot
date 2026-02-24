@@ -25,7 +25,7 @@ app.post(`/bot${process.env.TELEGRAM_TOKEN}`, async (req, res) => {
   try {
     // درخواست به AvalAI
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.2",                       // آخرین نسخه GPT AvalAI
+      model: "gpt-4o",                       // آخرین نسخه GPT AvalAI
       messages: [{ role: "user", content: msg.text }],
     });
 
