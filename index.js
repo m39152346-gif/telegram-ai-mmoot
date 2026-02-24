@@ -30,11 +30,18 @@ app.post(`/bot${process.env.TELEGRAM_TOKEN}`, async (req, res) => {
 
     const data = await response.json();
 
-    if (data.choices && data.choices[0] && data.choices[0].message) {
-      await bot.sendMessage(msg.chat.id, data.choices[0].message.content);
-    } else {
-      await bot.sendMessage(msg.chat.id, "❌ خطا: پاسخی دریافت نشد.");
+    // بررسی پاسخ AvalAI با دو حالت
+    let reply = "❌ خطا: پاسخی دریافت نشد.";
+
+    if (data.choices && data.choices[0]) {
+      if (data.choices[0].message && data.choices[0].message.content) {
+        reply = data.choices[0].message.content;
+      } else if (data.choices[0].text) {
+        reply = data.choices[0].text;
+      }
     }
+
+    await bot.sendMessage(msg.chat.id, reply);
 
   } catch (err) {
     console.log("خطا در ارتباط با AvalAI:", err);
