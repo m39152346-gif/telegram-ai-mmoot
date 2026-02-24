@@ -1,55 +1,51 @@
 import express from "express";
 import TelegramBot from "node-telegram-bot-api";
-import OpenAI from "openai";
+import fetch from "node-fetch";
 
 const app = express();
 app.use(express.json());
 
-// تلگرام
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN);
-
-// AvalAI GPT‑4o
-const openai = new OpenAI({
-  apiKey: process.env.AVAL_API_KEY,          // کلید GPT‑4o
-  baseURL: "https://api.avalai.ir/v1"        // مهم: آدرس AvalAI
-});
-
 const PORT = process.env.PORT || 3000;
 
-// بررسی اولیه کلید AvalAI
-if (!process.env.AVAL_API_KEY || process.env.AVAL_API_KEY.trim() === "") {
-  console.error("⚠️ API Key AvalAI تنظیم نشده یا اشتباه است!");
-}
+const AVAL_API_KEY = process.env.AVAL_API_KEY;
+const MODEL = "gpt-4o";
 
-// Webhook endpoint
 app.post(`/bot${process.env.TELEGRAM_TOKEN}`, async (req, res) => {
   const msg = req.body.message;
   if (!msg || !msg.text) return res.sendStatus(200);
 
   try {
-    // درخواست به GPT‑4o
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",  // مدل خودت
-      messages: [{ role: "user", content: msg.text }],
+    const response = await fetch("https://api.avalai.ir/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${AVAL_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [{ role: "user", content: msg.text }]
+      })
     });
 
-    // ارسال پاسخ به تلگرام
-    await bot.sendMessage(
-      msg.chat.id,
-      completion.choices[0].message.content
-    );
+    const data = await response.json();
 
-  } catch (error) {
-    console.log("خطا در ارتباط با GPT‑4o:", error);
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+      await bot.sendMessage(msg.chat.id, data.choices[0].message.content);
+    } else {
+      await bot.sendMessage(msg.chat.id, "❌ خطا: پاسخی دریافت نشد.");
+    }
+
+  } catch (err) {
+    console.log("خطا در ارتباط با AvalAI:", err);
     await bot.sendMessage(msg.chat.id, "❌ خطا در ارتباط با هوش مصنوعی. لطفاً بعداً امتحان کنید.");
   }
 
   res.sendStatus(200);
 });
 
-// راه‌اندازی سرور و Webhook
 app.listen(PORT, async () => {
   const url = process.env.RENDER_EXTERNAL_URL;
   await bot.setWebHook(`${url}/bot${process.env.TELEGRAM_TOKEN}`);
-  console.log("Bot is running with AvalAI GPT-4o 🚀");
+  console.log("Bot is running with AvalAI GPT-4o via fetch 🚀");
 });
